@@ -1,0 +1,228 @@
+const express = require('express');
+const mqtt = require('mqtt');
+const app = express();
+const { Client, Pool } = require('pg');
+require('dotenv').config();
+
+
+// Definición de tópicos MQTT
+const topic_temp = 'pf_rense/temperatura001';
+const topic_sat_ox = 'pf_rense/saturacion_oxigeno002';
+const topic_sig_vit = 'pf_rense/signos_vitales003';
+
+// Configuración de conexión (primero ajustar archivo .env, usar ejemplo)
+const dbConfig = {
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT || 5432,
+};
+
+
+// 1. Conexión al Broker MQTT y suscripción a tópicos
+const client = mqtt.connect('mqtt://broker.hivemq.com'); // Broker público para pruebas
+
+client.on('connect', () => {
+    console.log('Conectado al Broker MQTT');
+    client.subscribe([topic_temp, topic_sat_ox, topic_sig_vit]);
+});
+
+
+
+// Variable local para guardar el último dato recibido
+let ultimaTemperatura = "Esperando datos...";
+let ultimaSaturacionOxigeno = "Esperando datos...";
+const datosSignosVitales = [];
+
+const pool = new Pool({ ...dbConfig, database: 'proyecto_rense_db' });
+
+// 2. Escuchar mensajes MQTT
+client.on('message', async (topic, message) => {
+    const data = JSON.parse(message.toString());
+    try {
+        if (topic === topic_temp) {
+            await pool.query('INSERT INTO temperatura (valor) VALUES ($1)', [data.valor]);
+            ultimaTemperatura = message.toString();
+            console.log(`Nuevo dato en ${topic}: ${data.valor}`);
+        } 
+    } catch (err) {
+        console.error("Error guardando en DB:", err);
+    }
+});
+client.on('message', async (topic, message) => {
+    const data = JSON.parse(message.toString());
+    try {
+        if (topic === topic_sat_ox) {
+            await pool.query('INSERT INTO saturacion_oxigeno (valor) VALUES ($1)', [data.valor]);
+            ultimaSaturacionOxigeno = message.toString();
+            console.log(`Nuevo dato en ${topic}: ${data.valor}`);
+        }
+    } catch (err) {
+        console.error("Error guardando en DB:", err);
+    }
+});
+client.on('message', async (topic, message) => {
+    const data = JSON.parse(message.toString());
+    if (topic === topic_sig_vit) {
+        try {
+            // Como recibes un arreglo de 60 datos, usamos un loop o un UNNEST
+            for (let d of data) {
+                await pool.query('INSERT INTO signos_vitales (pulso, timestamp) VALUES ($1, $2)', [d.pulso, d.ts]);
+            }
+
+            // Mantener solo los últimos 300 datos en memoria
+            // const paqueteDeDatos = data.map(d => ({ pulso: d.pulso, ts: d.ts }));
+            // datosSignosVitales.push(...paqueteDeDatos);
+            datosSignosVitales.push(...data);
+            if (datosSignosVitales.length > 300) datosSignosVitales.splice(0, paqueteDeDatos.length);
+            
+            console.log("Lote de signos vitales guardado.");
+        } catch (e) {
+            console.error("Error al parsear JSON", e);
+        }
+    }
+});
+
+
+// 3. Endpoint de Express para tu SPA
+
+// --- Rutas para obtener el último dato ---
+app.get('/api/ultimo_valor/temperatura', (req, res) => {
+    res.json({ temperatura: ultimaTemperatura });
+});
+app.get('/api/ultimo_valor/saturacion_oxigeno', (req, res) => {
+    res.json({ saturacion_oxigeno: ultimaSaturacionOxigeno });
+});
+app.get('/api/ultimo_valor/signos-vitales', (req, res) => {
+    res.json(datosSignosVitales);
+});
+
+// --- Rutas para obtener el historial completo ---
+// ejemplo: /api/historial_completo/temperatura?limite=20
+app.get('/api/historial_completo/temperatura', async (req, res) => {
+    const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
+    try {
+        let query;
+        let valores = [];
+
+        // 2. Si el usuario no mandó límite o mandó -1, no aplicamos LIMIT
+        if (!limite || limite <= 0) {
+            query = 'SELECT * FROM temperatura ORDER BY timestamp DESC';
+        } else {
+            query = 'SELECT * FROM temperatura ORDER BY timestamp DESC LIMIT $1';
+            valores.push(parseInt(limite));
+        }
+
+        const resultado = await pool.query(query, valores);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener temperatura:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+app.get('/api/historial_completo/saturacion_oxigeno', async (req, res) => {
+    const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
+    try {
+        let query;
+        let valores = [];
+
+        // 2. Si el usuario no mandó límite o mandó -1, no aplicamos LIMIT
+        if (!limite || limite <= 0) {
+            query = 'SELECT * FROM saturacion_oxigeno ORDER BY timestamp DESC';
+        } else {
+            query = 'SELECT * FROM saturacion_oxigeno ORDER BY timestamp DESC LIMIT $1';
+            valores.push(parseInt(limite));
+        }
+
+        const resultado = await pool.query(query, valores);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener saturación de oxígeno:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+app.get('/api/historial_completo/signos_vitales', async (req, res) => {
+    const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
+    try {
+        let query;
+        let valores = [];
+
+        // 2. Si el usuario no mandó límite o mandó -1, no aplicamos LIMIT
+        if (!limite || limite <= 0) {
+            query = 'SELECT * FROM signos_vitales ORDER BY timestamp DESC';
+        } else {
+            query = 'SELECT * FROM signos_vitales ORDER BY timestamp DESC LIMIT $1';
+            valores.push(parseInt(limite));
+        }
+
+        const resultado = await pool.query(query, valores);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener signos vitales:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+
+// Ejemplos: 
+//  http://localhost:3000/api/entre_momentos/temperatura
+//  http://localhost:3000/api/entre_momentos/temperatura?inicio=2024-01-01T00:00:00Z
+//  http://localhost:3000/api/entre_momentos/temperatura?fin=2024-01-01T00:00:00Z
+//  http://localhost:3000/api/entre_momentos/temperatura?inicio=2024-01-01T00:00:00Z&fin=2024-01-31T23:59:59Z
+
+app.get('/api/entre_momentos/:tipo', async (req, res) => {
+    const { tipo } = req.params;
+    const { inicio, fin } = req.query;
+
+    // 1. Mapeo de seguridad y nombres de tabla reales
+    const tablasPermitidas = {
+        'temperatura': 'temperatura',
+        'saturacion_oxigeno': 'saturacion_oxigeno',
+        'signos_vitales': 'sig_vit' // Asegúrate que este sea el nombre real en Postgres
+    };
+
+    const tablaReal = tablasPermitidas[tipo];
+
+    if (!tablaReal) {
+        return res.status(400).json({ error: "Tipo de dato no válido" });
+    }
+
+    let query = `SELECT * FROM ${tablaReal}`;
+    let valores = [];
+    let condiciones = [];
+
+    // 2. Construcción dinámica de la consulta
+    if (inicio) {
+        valores.push(inicio);
+        condiciones.push(`timestamp >= $${valores.length}`);
+    }
+
+    if (fin) {
+        valores.push(fin);
+        condiciones.push(`timestamp <= $${valores.length}`);
+    }
+
+    // Si hay condiciones, las añadimos al WHERE
+    if (condiciones.length > 0) {
+        query += ` WHERE ${condiciones.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY timestamp DESC`;
+
+    try {
+        const resultado = await pool.query(query, valores);
+        res.json({
+            total: resultado.rowCount,
+            datos: resultado.rows
+        });
+    } catch (err) {
+        console.error("Error SQL:", err.message);
+        res.status(500).json({ error: "Error al consultar la base de datos" });
+    }
+});
+
+// Iniciar el servidor Express
+app.listen(3000, () => {
+    console.log('Servidor Express corriendo en el puerto 3000');
+});

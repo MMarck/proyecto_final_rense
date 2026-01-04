@@ -1,0 +1,14 @@
+DB_USER=USUARIO
+DB_HOST=localhost
+DB_NAME=NOMBRE_DE_TU_DB
+DB_PASSWORD=CONTRASEÑA
+DB_PORT=5432    
+
+
+# Eliminar la siguiente seccion cuando se desee ejecutar el script ´verificar_crear_bd.js´
+# == Comandos utiles para la base de datos postgres ==
+# ingresar a la consola de postgres desde root
+sudo -u postgres psql
+
+# Crear usuario 
+CREATE USER USUARIO WITH PASSWORD 'CONTRASEÑA' CREATEDB;
