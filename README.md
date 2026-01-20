@@ -26,20 +26,17 @@
 
 6. **Probar el funcionamiento del servidor**  
    Ejecutar alguno de los scripts de ejemplo.  
-   Estos envían datos periódicamente al broker público `mqtt://broker.hivemq.com`, los cuales son recibidos y almacenados por el servidor:
+   Estos envían datos periódicamente al broker público `mqtt://broker.hivemq.com`, los cuales son recibidos y almacenados por el servidor privado. Para probar el funcionamiento se disponen 2 ejemplos en 2 lenguajes (javascript y C) uno de los ejemplos envia periodicamente datos de temperatura, oxigeno en sangre y poulsaciones por minuto, mientras el otro envia 2 arreglos (uno de valores y otro de tiempo) simulando una lectura de electro cardiograma:
 
-   - `ejemplo_cliente_saturacion_ox.js`
-   - `ejemplo_cliente_signos_vitales.js`
-   - `ejemplo_cliente_temperatura.js`
+   - `ejemplo_cliente_temp_spo2_bpm`
+   - `ejemplo_cliente_signos_vitales_ecg`
 
 7. **Verificar los datos almacenados**  
    Acceder a las siguientes rutas de la API:
 
-   ### Último valor registrado
+   ### Últimos valores registrados
    ```
-   /api/ultimo_valor/temperatura
-   /api/ultimo_valor/saturacion_oxigeno
-   /api/ultimo_valor/signos_vitales
+   /api/ultimos_valores
    ```
 
    ### Historial completo
