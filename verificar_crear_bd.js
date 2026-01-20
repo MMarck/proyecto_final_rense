@@ -37,20 +37,23 @@ async function setupDatabase() {
     
         CREATE TABLE IF NOT EXISTS temperatura (
             id SERIAL PRIMARY KEY,
-            valor FLOAT,
-            timestamp TIMESTAMPTZ DEFAULT NOW()
+            valor FLOAT
         );
 
         CREATE TABLE IF NOT EXISTS saturacion_oxigeno (
             id SERIAL PRIMARY KEY,
-            valor FLOAT,
-            timestamp TIMESTAMPTZ DEFAULT NOW()
+            valor FLOAT
         );
 
-        CREATE TABLE IF NOT EXISTS signos_vitales (
+        CREATE TABLE IF NOT EXISTS pulsaciones_por_minuto (
             id SERIAL PRIMARY KEY,
-            pulso INTEGER,
-            timestamp TIMESTAMPTZ DEFAULT NOW()
+            valor INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS signos_vitales_ecg (
+            id SERIAL PRIMARY KEY,
+            valor INTEGER,
+            tiempo FLOAT
         );
     `;
     await pool.query(createTablesQuery);
