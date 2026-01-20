@@ -3,14 +3,17 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mqtt": "^5.14.1",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "cors": "^2.8.5"
+
   },
   "name": "tf_ren_jo",
   "version": "1.0.0",
   "description": "1. ejecutar el archivo ´crear base de datos.js´ para asegurarse de que se puede conectar a la base de datos y esta tiene la estructura correcta 2. ejecutar el servidor  3. probar el funcionamiento del servidor ejecutando alguno de los script de ejemplo, ya sea:}     * ejemplo_cliente_saturacion_ox.js     * ejemplo_cliente_signos_vitales.js     * ejemplo_cliente_temperatura.js",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
