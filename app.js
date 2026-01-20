@@ -6,8 +6,6 @@ require('dotenv').config();
 
 
 // Definición de tópicos MQTT
-// const topic_temp = 'pf_rense/temperatura001';
-// const topic_sat_ox = 'pf_rense/saturacion_oxigeno002';
 const topic_bmp_spo2_temp = 'pf_rense/temp_spo2_bpm';
 const topic_sig_vit_ecg = 'pf_rense/signos_vitales_ecg';
 
@@ -90,53 +88,6 @@ client.on('message', async (topic, message) => {
     }
 });
 
-// client.on('message', async (topic, message) => {
-//     const data = JSON.parse(message.toString());
-//     try {
-//         if (topic === topic_temp) {
-//             await pool.query('INSERT INTO temperatura (valor) VALUES ($1)', [data.valor]);
-//             ultimaTemperatura = message.toString();
-//             console.log(`Nuevo dato en ${topic}: ${data.valor}`);
-//         } 
-//     } catch (err) {
-//         console.error("Error guardando en DB:", err);
-//     }
-// });
-// client.on('message', async (topic, message) => {
-//     const data = JSON.parse(message.toString());
-//     try {
-//         if (topic === topic_sat_ox) {
-//             await pool.query('INSERT INTO saturacion_oxigeno (valor) VALUES ($1)', [data.valor]);
-//             ultimaSaturacionOxigeno = message.toString();
-//             console.log(`Nuevo dato en ${topic}: ${data.valor}`);
-//         }
-//     } catch (err) {
-//         console.error("Error guardando en DB:", err);
-//     }
-// });
-
-// client.on('message', async (topic, message) => {
-//     const data = JSON.parse(message.toString());
-//     if (topic === topic_sig_vit) {
-//         try {
-//             // Como recibes un arreglo de 60 datos, usamos un loop o un UNNEST
-//             for (let d of data) {
-//                 await pool.query('INSERT INTO signos_vitales_ecg (pulso, timestamp) VALUES ($1, $2)', [d.pulso, d.ts]);
-//             }
-
-//             // Mantener solo los últimos 300 datos en memoria
-//             // const paqueteDeDatos = data.map(d => ({ pulso: d.pulso, ts: d.ts }));
-//             // datosSignosVitales.push(...paqueteDeDatos);
-//             datosSignosVitales.push(...data);
-//             if (datosSignosVitales.length > 300) datosSignosVitales.splice(0, paqueteDeDatos.length);
-            
-//             console.log("Lote de signos vitales guardado.");
-//         } catch (e) {
-//             console.error("Error al parsear JSON", e);
-//         }
-//     }
-// });
-
 client.on('message', async (topic, message) => {
     try {
         const data = JSON.parse(message.toString());
@@ -182,15 +133,6 @@ client.on('message', async (topic, message) => {
 // 3. Endpoint de Express para tu SPA
 
 // --- Rutas para obtener el último dato ---
-// app.get('/api/ultimo_valor/temperatura', (req, res) => {
-//     res.json({ temperatura: ultimaTemperatura });
-// });
-// app.get('/api/ultimo_valor/saturacion_oxigeno', (req, res) => {
-//     res.json({ saturacion_oxigeno: ultimaSaturacionOxigeno });
-// });
-// app.get('/api/ultimos_valores', (req, res) => {
-//     res.json(datosSignosVitalesECG);
-// });
 app.get('/api/ultimos_valores', (req, res) => {
     res.json({
         temperatura: ultimaTemperatura,
@@ -325,9 +267,6 @@ app.get('/api/entre_momentos/:tipo', async (req, res) => {
     }
 });
 
-// Iniciar el servidor Express
-// app.listen(3000, () => {
-//     console.log('Servidor Express corriendo en el puerto 3000');
-// });
 
+// Escuchar en todas las interfaces de red
 app.listen(3000, '0.0.0.0', () => { console.log('Servidor escuchando en 0.0.0.0:3000'); });
