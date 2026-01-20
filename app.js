@@ -3,6 +3,11 @@ const mqtt = require('mqtt');
 const app = express();
 const { Client, Pool } = require('pg');
 require('dotenv').config();
+const cors = require('cors');
+
+
+app.use(cors({ origin: '*' }));
+
 
 
 // Definición de tópicos MQTT
@@ -267,6 +272,9 @@ app.get('/api/entre_momentos/:tipo', async (req, res) => {
     }
 });
 
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Escuchar en todas las interfaces de red
-app.listen(3000, '0.0.0.0', () => { console.log('Servidor escuchando en 0.0.0.0:3000'); });
+app.listen(PORT, HOST, () => {
+    console.log(`Servidor escuchando en http://${HOST}:${PORT}`);
+});
