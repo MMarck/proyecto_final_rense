@@ -4,6 +4,7 @@ const app = express();
 const { Client, Pool } = require('pg');
 require('dotenv').config();
 const cors = require('cors');
+const axios = require("axios");
 
 
 app.use(cors({ origin: '*' }));
@@ -39,6 +40,7 @@ let ultimaTemperatura = "Esperando datos...";
 let ultimaSaturacionOxigeno = "Esperando datos...";
 let ultimaPulsacionPorMinuto = "Esperando datos...";
 let ultimosSignosVitalesECG = {valores: [], tiempos: []};
+let ultimoTriage = "esperando datos...";
 
 const pool = new Pool({ ...dbConfig, database: 'proyecto_rense_db' });
 
@@ -86,6 +88,9 @@ client.on('message', async (topic, message) => {
             ultimaSaturacionOxigeno = data.final_spo2
             ultimaPulsacionPorMinuto = data.final_bpm
 
+            // calcular triage
+            calcular_triage();
+
             console.log(`Nuevo dato en ${topic}: BPM=${data.final_bpm}, SpO2=${data.final_spo2}, Temp=${data.final_temp}`);
         }
     } catch (err) {
@@ -124,6 +129,9 @@ client.on('message', async (topic, message) => {
             ultimosSignosVitalesECG.valores = data.valor;
             ultimosSignosVitalesECG.tiempos = data.tiempo;
 
+            // calcular triage
+            calcular_triage();
+
             console.log(`Insertados ${data.valor.length} signos vitales`);
         }
 
@@ -143,7 +151,8 @@ app.get('/api/ultimos_valores', (req, res) => {
         temperatura: ultimaTemperatura,
         saturacion_oxigeno: ultimaSaturacionOxigeno,
         pulsaciones_por_minuto: ultimaPulsacionPorMinuto,
-        signos_vitales_ecg: ultimosSignosVitalesECG   
+        signos_vitales_ecg: ultimosSignosVitalesECG,
+        triage: ultimoTriage  
     });
 });
 
@@ -271,6 +280,89 @@ app.get('/api/entre_momentos/:tipo', async (req, res) => {
         res.status(500).json({ error: "Error al consultar la base de datos" });
     }
 });
+
+// calcular estadísticas básicas de ECG
+function estadisticosECG(values) {
+  if (!values || values.length === 0) {
+    return { mean: null, std: null, min: null, max: null };
+  }
+
+  const mean = values.reduce((a,b)=>a+b,0) / values.length;
+
+  const variance = values.reduce((a,b)=>a + (b-mean)**2, 0) / values.length;
+  const std = Math.sqrt(variance);
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  return { mean, std, min, max };
+}
+
+// Función para predecir y guardar triage
+async function predecir_guardar_triage(ultimos_datos) {
+  try {
+    let {
+      temperatura,
+      spo2,
+      bpm,
+      ecg_arr
+    } = ultimos_datos;
+
+    // --- Procesar ECG ---
+    const { mean, std, min, max } = estadisticosECG(ecg_arr || []);
+
+    // --- Armar input del modelo ---
+    const modeloInput = {
+      TEMP_mean: Number(temperatura),
+      SpO2_mean: Number(spo2),
+      BPM_mean: Number(bpm),
+      V_mean: mean,
+      V_std: std,
+      V_min: min,
+      V_max: max
+    };
+
+    // --- Llamar API Python ---
+    const { data } = await axios.post("http://localhost:8001/predecir", modeloInput);
+
+    // data => { prediccion: "bajo" }
+
+    // --- Guardar en BD ---
+    await pool.query(
+      `INSERT INTO triage (input, prediccion)
+       VALUES ($1, $2)`,
+      [
+        modeloInput,
+        data.prediccion
+      ]
+    );
+
+    ultimoTriage = data.prediccion;
+    console.log("Triage guardado:", ultimoTriage);
+
+  } catch (err) {
+    console.error("Error durante calculo de triage:", err);
+  }
+};
+
+function calcular_triage() {
+    // verificar si las variables son válidas
+    if (
+        ultimaTemperatura !== "Esperando datos..." &&
+        ultimaSaturacionOxigeno !== "Esperando datos..." &&
+        ultimaPulsacionPorMinuto !== "Esperando datos..." &&
+        ultimosSignosVitalesECG.valores.length > 0
+    ) {
+        // llamar a la función asíncrona
+        predecir_guardar_triage({
+            temperatura: ultimaTemperatura,
+            spo2: ultimaSaturacionOxigeno,
+            bpm: ultimaPulsacionPorMinuto,
+            ecg_arr: ultimosSignosVitalesECG.valores
+        });
+    }
+}
+
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';

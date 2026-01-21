@@ -55,6 +55,14 @@ async function setupDatabase() {
             valor INTEGER,
             tiempo FLOAT
         );
+
+        CREATE TABLE triage (
+            id SERIAL PRIMARY KEY,
+            input JSONB,
+            prediccion TEXT,
+            modelo_version TEXT DEFAULT 'v1',
+            created_at TIMESTAMP DEFAULT NOW()
+        );
     `;
     await pool.query(createTablesQuery);
     console.log("\x1b[32m%s\x1b[0m", "Base de datos y tablas listas.");
