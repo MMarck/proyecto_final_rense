@@ -35,20 +35,38 @@
    Acceder a las siguientes rutas de la API:
 
    ### Últimos valores registrados
+   Con esta ruta se pueden consultar los últimos valores recibidos. y almacenados temporalmente en memoria volátil (RAM) del servidor
    ```
    /api/ultimos_valores
    ```
+   A continuaciones se agrega un ejemplo:
+   ```
+   {"temperatura":"23.78","saturacion_oxigeno":"97.37","pulsaciones_por_minuto":113,"signos_vitales_ecg":{"valores":[84,...,68],"tiempos":[1769127025246,...,1769127035229]},"triage":"intermedio"}
+   ```
 
    ### Historial completo
+   Esta ruta permite recuperar todos los datos de una tabla. 
+
    ```
    /api/historial_completo/temperatura
    /api/historial_completo/saturacion_oxigeno
+   /api/historial_completo/pulsaciones_por_minuto
    /api/historial_completo/signos_vitales
+   /api/historial_completo/triage
    ```
 
-   ### Datos entre dos momentos
+   Se puede usar la variable "limite" para reducir la cantidad de valores que se desee consultar, a continuacion un ejemplo:
+
    ```
-   /api/entre_momentos/temperatura
-   /api/entre_momentos/saturacion_oxigeno
-   /api/entre_momentos/signos_vitales
+   /api/historial_completo/temperatura?limite=20
+   ```
+
+
+   ### Datos entre dos momentos (Sólo para signos vitales ECG)
+   Esta ruta permite consultar los valores de signos vitales, pero limitando a cierto rango de tiempo. A continuación se colocan algunos ejemplos de uso: 
+   ```
+   /api/signos_vitales_ecg/entre_momentos/
+   /api/signos_vitales_ecg/entre_momentos/?inicio=2024-01-01T00:00:00Z
+   /api/signos_vitales_ecg/entre_momentos/?fin=2024-01-01T00:00:00Z
+   /api/signos_vitales_ecg/entre_momentos/?inicio=2024-01-01T00:00:00Z&fin=2024-01-31T23:59:59Z
    ```

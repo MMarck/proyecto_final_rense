@@ -267,43 +267,29 @@ app.get('/api/historial_completo/triage', async (req, res) => {
 
 
 // Ejemplos: 
-//  http://localhost:3000/api/entre_momentos/temperatura
-//  http://localhost:3000/api/entre_momentos/temperatura?inicio=2024-01-01T00:00:00Z
-//  http://localhost:3000/api/entre_momentos/temperatura?fin=2024-01-01T00:00:00Z
-//  http://localhost:3000/api/entre_momentos/temperatura?inicio=2024-01-01T00:00:00Z&fin=2024-01-31T23:59:59Z
+//  http://localhost:3000/api/signos_vitales_ecg/entre_momentos/
+//  http://localhost:3000/api/signos_vitales_ecg/entre_momentos/?inicio=2024-01-01T00:00:00Z
+//  http://localhost:3000/api/signos_vitales_ecg/entre_momentos/?fin=2024-01-01T00:00:00Z
+//  http://localhost:3000/api/signos_vitales_ecg/entre_momentos/?inicio=2024-01-01T00:00:00Z&fin=2024-01-31T23:59:59Z
 
-app.get('/api/entre_momentos/:tipo', async (req, res) => {
-    const { tipo } = req.params;
+app.get('/api/signos_vitales_ecg/entre_momentos', async (req, res) => {
+    console.log("Ruta llamada", req.query);
+
     const { inicio, fin } = req.query;
 
-    // 1. Mapeo de seguridad y nombres de tabla reales
-    const tablasPermitidas = {
-        'temperatura': 'temperatura',
-        'saturacion_oxigeno': 'saturacion_oxigeno',
-        'pulsaciones_por_minuto': 'pulsaciones_por_minuto',
-        'signos_vitales_ecg': 'sig_vit', // Asegúrate que este sea el nombre real en Postgres
-        'triage': 'triage',
-    };
-
-    const tablaReal = tablasPermitidas[tipo];
-
-    if (!tablaReal) {
-        return res.status(400).json({ error: "Tipo de dato no válido" });
-    }
-
-    let query = `SELECT * FROM ${tablaReal}`;
+    let query = `SELECT * FROM signos_vitales_ecg`;
     let valores = [];
     let condiciones = [];
 
     // 2. Construcción dinámica de la consulta
     if (inicio) {
         valores.push(inicio);
-        condiciones.push(`timestamp >= $${valores.length}`);
+        condiciones.push(`tiempo >= $${valores.length}`);
     }
 
     if (fin) {
         valores.push(fin);
-        condiciones.push(`timestamp <= $${valores.length}`);
+        condiciones.push(`tiempo <= $${valores.length}`);
     }
 
     // Si hay condiciones, las añadimos al WHERE
@@ -311,7 +297,7 @@ app.get('/api/entre_momentos/:tipo', async (req, res) => {
         query += ` WHERE ${condiciones.join(' AND ')}`;
     }
 
-    query += ` ORDER BY timestamp DESC`;
+    query += ` ORDER BY tiempo DESC`;
 
     try {
         const resultado = await pool.query(query, valores);
