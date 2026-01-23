@@ -201,6 +201,27 @@ app.get('/api/historial_completo/saturacion_oxigeno', async (req, res) => {
         res.status(500).json({ error: "Error en el servidor" });
     }
 });
+app.get('/api/historial_completo/pulsaciones_por_minuto', async (req, res) => {
+    const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
+    try {
+        let query;
+        let valores = [];
+
+        // 2. Si el usuario no mandó límite o mandó -1, no aplicamos LIMIT
+        if (!limite || limite <= 0) {
+            query = 'SELECT * FROM pulsaciones_por_minuto ORDER BY timestamp DESC';
+        } else {
+            query = 'SELECT * FROM pulsaciones_por_minuto ORDER BY timestamp DESC LIMIT $1';
+            valores.push(parseInt(limite));
+        }
+
+        const resultado = await pool.query(query, valores);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener pulsaciones por minuto:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
 app.get('/api/historial_completo/signos_vitales_ecg', async (req, res) => {
     const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
     try {
@@ -222,6 +243,27 @@ app.get('/api/historial_completo/signos_vitales_ecg', async (req, res) => {
         res.status(500).json({ error: "Error en el servidor" });
     }
 });
+app.get('/api/historial_completo/triage', async (req, res) => {
+    const limite = req.query.limite; // Si no se envía, req.params.limite será 'undefined'
+    try {
+        let query;
+        let valores = [];
+
+        // 2. Si el usuario no mandó límite o mandó -1, no aplicamos LIMIT
+        if (!limite || limite <= 0) {
+            query = 'SELECT * FROM triage ORDER BY timestamp DESC';
+        } else {
+            query = 'SELECT * FROM triage ORDER BY timestamp DESC LIMIT $1';
+            valores.push(parseInt(limite));
+        }
+
+        const resultado = await pool.query(query, valores);
+        res.json(resultado.rows);
+    } catch (err) {
+        console.error("Error al obtener triage:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
 
 
 // Ejemplos: 
@@ -238,7 +280,9 @@ app.get('/api/entre_momentos/:tipo', async (req, res) => {
     const tablasPermitidas = {
         'temperatura': 'temperatura',
         'saturacion_oxigeno': 'saturacion_oxigeno',
-        'signos_vitales_ecg': 'sig_vit' // Asegúrate que este sea el nombre real en Postgres
+        'pulsaciones_por_minuto': 'pulsaciones_por_minuto',
+        'signos_vitales_ecg': 'sig_vit', // Asegúrate que este sea el nombre real en Postgres
+        'triage': 'triage',
     };
 
     const tablaReal = tablasPermitidas[tipo];
